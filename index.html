@@ -752,7 +752,8 @@ body:has(#guest:not([hidden])){background:
     let player = null, ready = false, pending = null;
     window.onYouTubeIframeAPIReady = () => {
       player = new YT.Player('player', {
-        host: 'https://www.youtube-nocookie.com',
+        // Standard youtube.com player: Brave's YouTube ad-blocking rules and a signed-in YouTube Premium account both apply to it
+        host: 'https://www.youtube.com',
         width: '100%', height: '100%',
         playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3 },
         events: {
