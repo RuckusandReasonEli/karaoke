@@ -252,7 +252,7 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
   <dialog id="settings">
     <h2>Settings</h2>
     <div class="field">
-      <label class="label" for="apiKey">YouTube API key (required for song search)</label>
+      <label class="label" for="apiKey">YouTube API key (built in, change only if needed)</label>
       <input class="input" id="apiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
       <p class="help">Guests search YouTube on their phones with this key. Get a free one at <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">Google Cloud</a>: enable "YouTube Data API v3", then Credentials, Create API key. The free quota covers about 100 searches a day.</p>
     </div>
@@ -353,6 +353,8 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
 (() => {
   'use strict';
   const RELAY = 'https://ntfy.sh/';
+  // YouTube Data API key, restricted to ruckusandreasoneli.github.io in Google Cloud
+  const BUILT_IN_KEY = 'AIzaSyA8N7vczQjUK1HZYcVD9Mq02RngfdwTcb0';
   const $ = (s) => document.querySelector(s);
   const params = new URLSearchParams(location.search);
   const JOIN = params.get('join');
@@ -448,7 +450,7 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
       current: store.get('current', null),
       lastId: store.get('lastId', null),
       seen: store.get('seen', []),
-      key: store.get('key', ''),
+      key: store.get('key', '') || BUILT_IN_KEY,
       autostart: store.get('autostart', false)
     };
     const save = () => { for (const k in S) store.set(k, S[k]); };
@@ -458,7 +460,7 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
     // ----- QR + guest link -----
     function guestUrl() {
       let u = location.origin + location.pathname + '?join=' + S.topic;
-      if (S.key) u += '&k=' + encodeURIComponent(S.key);
+      if (S.key && S.key !== BUILT_IN_KEY) u += '&k=' + encodeURIComponent(S.key);
       return u;
     }
     function renderQR() {
@@ -637,7 +639,7 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
     const dlg = $('#settings');
     $('#openSettings').onclick = () => { $('#apiKey').value = S.key; $('#autoStart').checked = S.autostart; $('#guestLink').value = guestUrl(); dlg.showModal(); };
     $('#saveSettings').onclick = () => {
-      S.key = $('#apiKey').value.trim(); S.autostart = $('#autoStart').checked; save(); renderQR(); dlg.close();
+      S.key = $('#apiKey').value.trim() || BUILT_IN_KEY; S.autostart = $('#autoStart').checked; save(); renderQR(); dlg.close();
     };
     $('#copyLink').onclick = async () => { try { await navigator.clipboard.writeText(guestUrl()); $('#copyLink').textContent = 'Copied'; setTimeout(() => $('#copyLink').textContent = 'Copy link', 1500); } catch {} };
     $('#newNight').onclick = () => {
@@ -696,7 +698,7 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
   function guest() {
     $('#guest').hidden = false;
     if (!/^[\w-]{1,64}$/.test(JOIN)) { $('#gForm').hidden = true; $('#gBad').hidden = false; return; }
-    const key = params.get('k') || '';
+    const key = params.get('k') || BUILT_IN_KEY;
     if (!key) { $('#gStep1').hidden = true; $('#gNoKey').hidden = false; return; }
     let pick = null;
 
