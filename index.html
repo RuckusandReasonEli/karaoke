@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Karaoke Queue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#0d0b14; --panel:#16131f; --panel-2:#1e1a2b; --line:#2c2640;
+  --text:#f4f1fa; --muted:#a39cb6; --dim:#6f6885;
+  --pink:#ff3d8b; --pink-soft:rgba(255,61,139,.14);
+  --amber:#ffc24b; --green:#3ddc97; --red:#ff6b6b;
+  --radius:14px;
+  --display:'Bungee',system-ui,sans-serif;
+  --body:'DM Sans',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.4;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+[hidden]{display:none !important}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);font-weight:600;white-space:nowrap;transition:background .15s,border-color .15s,transform .05s}
+.btn:hover{border-color:var(--muted)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--pink);border-color:var(--pink);color:#fff}
+.btn.primary:hover{background:#ff5a9e}
+.btn.small{padding:6px 10px;font-size:14px;border-radius:8px}
+.btn:disabled{opacity:.5;cursor:default}
+.input{width:100%;padding:12px 14px;border-radius:10px;background:var(--bg);border:1px solid var(--line);outline:none}
+.input:focus{border-color:var(--pink)}
+.label{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:700}
+.logo{font-family:var(--display);color:var(--pink);letter-spacing:.02em}
+
+/* ============ HOST ============ */
+#host{display:grid;grid-template-columns:360px 1fr;height:100vh;overflow:hidden}
+.side{display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);min-height:0}
+.side-head{padding:20px 20px 12px;display:flex;align-items:baseline;justify-content:space-between}
+.side-head .logo{font-size:22px}
+.count{font-size:13px;color:var(--muted)}
+.queue{list-style:none;flex:1;overflow-y:auto;padding:4px 12px 12px;min-height:0}
+.queue li{display:grid;grid-template-columns:32px 1fr auto;gap:10px;align-items:center;padding:12px 10px;border-radius:12px;margin-bottom:6px;background:var(--panel-2);border:1px solid transparent}
+.queue li.fresh{animation:fresh 2.4s ease-out}
+@keyframes fresh{0%{border-color:var(--pink);background:var(--pink-soft)}100%{border-color:transparent;background:var(--panel-2)}}
+.queue .num{font-family:var(--display);font-size:18px;color:var(--dim);text-align:center}
+.queue li:first-child .num{color:var(--amber)}
+.queue .singer{font-weight:700;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.queue .song{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.queue .acts{display:flex;gap:2px;opacity:.35;transition:opacity .15s}
+.queue li:hover .acts{opacity:1}
+.icon-btn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--muted)}
+.icon-btn:hover{background:var(--line);color:var(--text)}
+.icon-btn svg{width:16px;height:16px}
+.empty{padding:28px 16px;text-align:center;color:var(--dim);font-size:14px}
+
+.qr-card{margin:12px;padding:14px;border-radius:var(--radius);background:#fff;color:#111;display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center}
+.qr-card .qr{width:120px;height:120px}
+.qr-card .qr svg{width:100%;height:100%;display:block}
+.qr-card h3{font-family:var(--display);font-size:17px;line-height:1.1;color:#111;margin-bottom:6px}
+.qr-card p{font-size:12.5px;color:#444;line-height:1.35}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;margin-top:8px;color:#666}
+.live i{width:8px;height:8px;border-radius:50%;background:#bbb}
+.live.on i{background:#1fbf75;box-shadow:0 0 0 3px rgba(31,191,117,.2)}
+.warn{font-size:11.5px;color:#b3261e;margin-top:6px;font-weight:600}
+
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;position:relative}
+.topbar{position:absolute;top:0;left:0;right:0;z-index:15;display:flex;gap:10px;padding:16px 20px 22px;align-items:center;background:linear-gradient(var(--bg) 72%,rgba(13,11,20,0))}
+.topbar form{flex:1;display:flex;gap:8px}
+.results{position:absolute;top:73px;left:20px;right:20px;max-height:62vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;z-index:20;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.results-head{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.results-head .input{max-width:220px;padding:8px 12px}
+.results-head .spacer{flex:1}
+.result{display:grid;grid-template-columns:120px 1fr auto;gap:12px;align-items:center;padding:8px;border-radius:10px}
+.result:hover{background:var(--panel-2)}
+.result img{width:120px;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:var(--line)}
+.result .t{font-weight:600;font-size:15px}
+.result .c{font-size:13px;color:var(--muted)}
+.result .b{display:flex;gap:6px}
+.note{color:var(--muted);font-size:14px;padding:6px 4px}
+
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:16px 20px;container-type:size;position:relative}
+.frame{width:min(100cqw,calc(100cqh * 16 / 9));aspect-ratio:16/9;border-radius:var(--radius);overflow:hidden;background:#000;position:relative}
+.frame iframe{width:100%;height:100%;border:0;display:block}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:radial-gradient(ellipse at 50% 30%,#2a1636 0%,#0d0b14 70%);z-index:5;gap:14px}
+.overlay .kicker{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);font-weight:700}
+.overlay .big{font-family:var(--display);font-size:clamp(28px,5.5cqw,64px);line-height:1.05;color:var(--text)}
+.overlay .sub{font-size:clamp(15px,1.8cqw,22px);color:var(--muted);max-width:80%}
+.overlay .qr-big{background:#fff;padding:12px;border-radius:12px;width:clamp(140px,22cqh,240px);aspect-ratio:1}
+.overlay .qr-big svg{width:100%;height:100%;display:block}
+.overlay .row{display:flex;gap:10px;margin-top:6px}
+
+.nowbar{display:flex;align-items:center;gap:16px;padding:14px 20px;border-top:1px solid var(--line);background:var(--panel)}
+.nowbar .kicker{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);font-weight:700}
+.nowbar .who{font-family:var(--display);font-size:22px;line-height:1.1}
+.nowbar .what{font-size:14px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nowbar .info{flex:1;min-width:0}
+.nowbar .upnext{font-size:13px;color:var(--muted);text-align:right;max-width:240px}
+.nowbar .upnext b{color:var(--text)}
+
+/* Projection mode: host controls fade out when the mouse is still */
+.topbar,.nowbar .btn,.queue .acts-wrap{transition:opacity .4s}
+.shield{position:absolute;inset:0;z-index:4;display:none}
+.ui-hidden .topbar,.ui-hidden .nowbar .btn,.ui-hidden .queue .acts{opacity:0;pointer-events:none}
+.ui-hidden .shield{display:block}
+.ui-hidden,.ui-hidden *{cursor:none !important}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;color:var(--muted)}
+.keys kbd{font-family:var(--body);font-weight:700;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 8px;text-align:center;min-width:34px}
+
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-120%);background:var(--pink);color:#fff;font-weight:700;padding:12px 20px;border-radius:999px;transition:transform .3s,opacity .3s;z-index:50;box-shadow:0 10px 30px rgba(255,61,139,.35);opacity:0;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+dialog{margin:auto;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:24px;width:min(520px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog h2{font-family:var(--display);font-size:22px;margin-bottom:16px}
+dialog .field{margin-bottom:16px}
+dialog .help{font-size:13px;color:var(--muted);margin-top:6px}
+dialog .help a{color:var(--pink)}
+dialog .check{display:flex;gap:10px;align-items:center;font-size:15px}
+dialog .check input{width:18px;height:18px;accent-color:var(--pink)}
+dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px;flex-wrap:wrap}
+
+/* ============ GUEST (phone) ============ */
+#guest{max-width:520px;margin:0 auto;padding:24px 16px calc(40px + env(safe-area-inset-bottom))}
+#guest header{text-align:center;margin-bottom:22px}
+#guest header .logo{font-size:30px}
+#guest header p{color:var(--muted);margin-top:4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.search-row{display:flex;gap:8px}
+.toggle{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--muted);margin-top:10px}
+.toggle input{accent-color:var(--pink);width:16px;height:16px}
+.g-results{list-style:none;margin-top:12px}
+.g-results li button{width:100%;display:grid;grid-template-columns:104px 1fr;gap:12px;align-items:center;text-align:left;padding:8px;border-radius:10px;border:1px solid transparent}
+.g-results li button:hover,.g-results li button.sel{background:var(--panel-2);border-color:var(--pink)}
+.g-results img{width:104px;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:var(--line)}
+.g-results .t{font-weight:600;font-size:14.5px;line-height:1.3}
+.g-results .c{font-size:12.5px;color:var(--muted)}
+.steps{font-size:14px;color:var(--muted);margin-top:12px;padding-left:20px}
+.steps li{margin-bottom:4px}
+.picked{display:grid;grid-template-columns:104px 1fr;gap:12px;align-items:center}
+.picked img{width:104px;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:var(--line)}
+.picked .t{font-weight:700}
+.err{color:var(--red);font-size:14px;margin-top:8px}
+.big-btn{width:100%;padding:16px;font-size:18px;border-radius:12px}
+.done{text-align:center;padding:40px 16px}
+.done .logo{font-size:34px;margin-bottom:10px}
+.done p{color:var(--muted);margin-bottom:24px}
+.divider{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.1em;margin:14px 0 10px}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+@media (max-width:900px){#host{grid-template-columns:300px 1fr}}
+</style>
+</head>
+<body>
+
+<!-- ================= HOST SCREEN ================= -->
+<div id="host" hidden>
+  <aside class="side">
+    <div class="side-head">
+      <span class="logo">Up Next</span>
+      <span class="count" id="count">0 singers</span>
+    </div>
+    <ol class="queue" id="queue"></ol>
+    <div class="qr-card">
+      <div class="qr" id="qrSmall"></div>
+      <div>
+        <h3>Scan to sing</h3>
+        <p>Pick your song on your phone and you'll be added to the list.</p>
+        <div class="live" id="live"><i></i><span>Connecting</span></div>
+        <div class="warn" id="fileWarn" hidden>Opened as a local file. Host this page online so phones can open the QR link.</div>
+      </div>
+    </div>
+  </aside>
+
+  <section class="main">
+    <div class="topbar">
+      <form id="hostSearch" autocomplete="off">
+        <input class="input" id="hostQ" placeholder="Search YouTube or paste a link">
+        <button class="btn primary" type="submit">Search</button>
+      </form>
+      <button class="btn" id="openSettings" title="Settings" aria-label="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+
+    <div class="results" id="hostResults" hidden>
+      <div class="results-head">
+        <input class="input" id="hostSinger" placeholder="Singer name" value="">
+        <span class="spacer"></span>
+        <button class="btn small" id="closeResults">Close</button>
+      </div>
+      <div id="hostResultsList"></div>
+    </div>
+
+    <div class="stage">
+      <div class="frame">
+        <div id="player"></div>
+        <div class="shield"></div>
+
+        <div class="overlay" id="ovIdle">
+          <div class="kicker">Karaoke night</div>
+          <div class="qr-big" id="qrBig"></div>
+          <div class="big">Scan to sing</div>
+          <div class="sub">Pick your song on your phone. Your name shows up on the list.</div>
+        </div>
+
+        <div class="overlay" id="ovNext" hidden>
+          <div class="kicker">Up next</div>
+          <div class="big" id="nextWho"></div>
+          <div class="sub" id="nextWhat"></div>
+          <div class="row">
+            <button class="btn primary" id="startNext">Start song</button>
+            <button class="btn" id="skipNext">Skip singer</button>
+          </div>
+        </div>
+
+        <div class="overlay" id="ovErr" hidden>
+          <div class="kicker" style="color:var(--red)">Can't play this one</div>
+          <div class="big" id="errWho"></div>
+          <div class="sub">The video's owner blocked playing it outside YouTube. Pick a different version or skip ahead.</div>
+          <div class="row">
+            <a class="btn" id="errOpen" target="_blank" rel="noopener">Open on YouTube</a>
+            <button class="btn primary" id="errSkip">Next singer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nowbar">
+      <div class="info">
+        <div class="kicker">Now singing</div>
+        <div class="who" id="nowWho">Nobody yet</div>
+        <div class="what" id="nowWhat">Scan the QR code to get on the list</div>
+      </div>
+      <div class="upnext" id="upNextHint"></div>
+      <button class="btn" id="restartBtn" title="Restart song">Restart</button>
+      <button class="btn primary" id="nextBtn">Next singer</button>
+    </div>
+  </section>
+
+  <dialog id="settings">
+    <h2>Settings</h2>
+    <div class="field">
+      <label class="label" for="apiKey">YouTube API key (optional)</label>
+      <input class="input" id="apiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
+      <p class="help">Lets you and your guests search YouTube right inside the app. Without it, guests search in the YouTube app and paste the link. Get a free key at <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">Google Cloud</a> (enable "YouTube Data API v3", then Credentials, Create API key). Free quota covers about 100 searches a day.</p>
+    </div>
+    <div class="field">
+      <label class="check"><input type="checkbox" id="autoStart"> Start the next song automatically</label>
+      <p class="help">Off: shows an "Up next" card so the next singer can grab the mic, then you tap Start.</p>
+    </div>
+    <div class="field">
+      <label class="label">Keyboard shortcuts</label>
+      <div class="keys">
+        <kbd>F</kbd><span>Full screen on or off</span>
+        <kbd>N</kbd><span>Next singer (or start the "Up next" song)</span>
+        <kbd>R</kbd><span>Restart the current song</span>
+        <kbd>S</kbd><span>Search</span>
+        <kbd>Esc</kbd><span>Close search</span>
+      </div>
+      <p class="help">Controls hide after 3 seconds without mouse movement. Move the mouse to bring them back.</p>
+    </div>
+    <div class="field">
+      <label class="label">Guest link</label>
+      <input class="input" id="guestLink" readonly>
+    </div>
+    <div class="foot">
+      <button class="btn" id="newNight" style="color:var(--red)">Start a new night</button>
+      <div style="display:flex;gap:10px">
+        <button class="btn" id="copyLink">Copy link</button>
+        <button class="btn primary" id="saveSettings">Done</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- ================= GUEST (PHONE) ================= -->
+<div id="guest" hidden>
+  <div id="gForm">
+    <header>
+      <div class="logo">Sign up to sing</div>
+      <p>Pick your karaoke track, add your name, and you're on the list.</p>
+    </header>
+
+    <div class="card">
+      <label class="label" for="gQ">1. Find your song</label>
+      <form id="gSearch" class="search-row" autocomplete="off">
+        <input class="input" id="gQ" placeholder="Song or artist" enterkeyhint="search">
+        <button class="btn primary" type="submit">Search</button>
+      </form>
+      <label class="toggle"><input type="checkbox" id="gKaraoke" checked> Karaoke versions only</label>
+      <div id="gNoKey" hidden>
+        <ol class="steps">
+          <li>Tap Search. YouTube opens in a new tab.</li>
+          <li>On the video you want, tap Share, then Copy link.</li>
+          <li>Come back here and paste it below.</li>
+        </ol>
+      </div>
+      <ul class="g-results" id="gResults"></ul>
+      <p class="err" id="gSearchErr" hidden></p>
+
+      <div class="divider">or paste a YouTube link</div>
+      <input class="input" id="gLink" placeholder="https://youtu.be/..." inputmode="url" autocomplete="off">
+    </div>
+
+    <div class="card" id="gPickedCard" hidden>
+      <label class="label">Your pick</label>
+      <div class="picked">
+        <img id="gPickedImg" alt="">
+        <div class="t" id="gPickedTitle"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="label" for="gName">2. Your name</label>
+      <input class="input" id="gName" placeholder="Name on the list" maxlength="40" autocomplete="given-name">
+    </div>
+
+    <button class="btn primary big-btn" id="gSubmit" disabled>Add me to the list</button>
+    <p class="err" id="gErr" hidden></p>
+  </div>
+
+  <div class="done" id="gDone" hidden>
+    <div class="logo">You're on!</div>
+    <p id="gDoneMsg"></p>
+    <button class="btn primary big-btn" id="gAgain">Sign up another song</button>
+  </div>
+
+  <div class="done" id="gBad" hidden>
+    <div class="logo">Hmm</div>
+    <p>This sign-up link looks broken. Scan the QR code on the karaoke screen again.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const RELAY = 'https://ntfy.sh/';
+  const $ = (s) => document.querySelector(s);
+  const params = new URLSearchParams(location.search);
+  const JOIN = params.get('join');
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('kq_' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('kq_' + k, JSON.stringify(v)); } catch {} }
+  };
+
+  // ---------- shared helpers ----------
+  const cleanId = (x) => { const m = String(x || '').match(/^[\w-]{11}/); return m ? m[0] : null; };
+  function parseVideoId(s) {
+    s = String(s || '').trim();
+    if (/^[\w-]{11}$/.test(s)) return s;
+    try {
+      const u = new URL(s);
+      if (!/(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)$/.test(u.hostname)) return null;
+      if (u.hostname.endsWith('youtu.be')) return cleanId(u.pathname.slice(1));
+      const v = u.searchParams.get('v');
+      if (v) return cleanId(v);
+      const m = u.pathname.match(/\/(embed|shorts|live|v)\/([\w-]{11})/);
+      if (m) return m[2];
+    } catch {}
+    return null;
+  }
+  function decodeEntities(s) { const t = document.createElement('textarea'); t.innerHTML = s; return t.value; }
+  const thumb = (id) => `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
+
+  async function ytSearch(q, key) {
+    const u = new URL('https://www.googleapis.com/youtube/v3/search');
+    u.search = new URLSearchParams({ part: 'snippet', type: 'video', videoEmbeddable: 'true', maxResults: '12', q, key });
+    const r = await fetch(u);
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((j.error && j.error.message) || 'Search failed');
+    return (j.items || []).filter(it => it.id && it.id.videoId).map(it => ({
+      videoId: it.id.videoId,
+      title: decodeEntities(it.snippet.title),
+      channel: decodeEntities(it.snippet.channelTitle || ''),
+      thumb: (it.snippet.thumbnails && (it.snippet.thumbnails.medium || it.snippet.thumbnails.default) || {}).url || thumb(it.id.videoId)
+    }));
+  }
+  async function fetchTitle(id) {
+    try {
+      const r = await fetch('https://noembed.com/embed?url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + id));
+      const j = await r.json();
+      return j.title || null;
+    } catch { return null; }
+  }
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  if (JOIN !== null) guest(); else host();
+
+  // =====================================================================
+  // HOST
+  // =====================================================================
+  function host() {
+    $('#host').hidden = false;
+    const S = {
+      topic: store.get('topic', null),
+      queue: store.get('queue', []),
+      current: store.get('current', null),
+      lastId: store.get('lastId', null),
+      seen: store.get('seen', []),
+      key: store.get('key', ''),
+      autostart: store.get('autostart', false)
+    };
+    const save = () => { for (const k in S) store.set(k, S[k]); };
+    const newTopic = () => 'kq-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => (b % 36).toString(36)).join('');
+    if (!S.topic) { S.topic = newTopic(); save(); }
+
+    // ----- QR + guest link -----
+    function guestUrl() {
+      let u = location.origin + location.pathname + '?join=' + S.topic;
+      if (S.key) u += '&k=' + encodeURIComponent(S.key);
+      return u;
+    }
+    function renderQR() {
+      const url = guestUrl();
+      try {
+        const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
+        const svg = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+        $('#qrSmall').innerHTML = svg; $('#qrBig').innerHTML = svg;
+      } catch (e) { $('#qrSmall').textContent = 'QR failed to load'; }
+      $('#guestLink').value = url;
+      $('#fileWarn').hidden = location.protocol !== 'file:';
+    }
+
+    // ----- live relay -----
+    let es;
+    function setLive(on) { const l = $('#live'); l.classList.toggle('on', on); l.querySelector('span').textContent = on ? 'Live, ready for sign-ups' : 'Reconnecting'; }
+    function connect() {
+      if (es) es.close();
+      const since = S.lastId ? S.lastId : 'all';
+      es = new EventSource(RELAY + S.topic + '/sse?since=' + encodeURIComponent(since));
+      es.onopen = () => setLive(true);
+      es.onerror = () => setLive(false);
+      es.onmessage = (e) => { let j; try { j = JSON.parse(e.data); } catch { return; } if (j.event === 'message') receive(j); };
+    }
+    function receive(j) {
+      if (S.seen.includes(j.id)) return;
+      S.seen.push(j.id); if (S.seen.length > 400) S.seen = S.seen.slice(-400);
+      S.lastId = j.id;
+      let m; try { m = JSON.parse(j.message); } catch { save(); return; }
+      const videoId = cleanId(m.videoId);
+      const singer = String(m.singer || '').trim().slice(0, 40);
+      if (!videoId || !singer) { save(); return; }
+      addToQueue({ id: j.id, singer, title: String(m.title || 'YouTube video').trim().slice(0, 140), videoId }, true);
+      toast(singer + ' is on the list!');
+    }
+
+    // ----- queue -----
+    let freshId = null;
+    function addToQueue(item, fresh) {
+      S.queue.push(item); freshId = fresh ? item.id : null; save(); render();
+      if (!S.current && $('#ovIdle').hidden === false && S.queue.length === 1) showNext();
+    }
+    const ICON = {
+      play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg>',
+      up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+      x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+    };
+    function render() {
+      const q = $('#queue'); q.innerHTML = '';
+      $('#count').textContent = S.queue.length + (S.queue.length === 1 ? ' singer' : ' singers');
+      if (!S.queue.length) q.appendChild(el('div', 'empty', 'No one in line yet. Scan the code below to sign up.'));
+      S.queue.forEach((it, i) => {
+        const li = el('li'); if (it.id === freshId) li.className = 'fresh';
+        li.appendChild(el('div', 'num', String(i + 1)));
+        const info = el('div'); info.style.minWidth = '0';
+        info.appendChild(el('div', 'singer', it.singer));
+        info.appendChild(el('div', 'song', it.title));
+        li.appendChild(info);
+        const acts = el('div', 'acts');
+        const mk = (svg, title, fn) => { const b = el('button', 'icon-btn'); b.innerHTML = svg; b.title = title; b.setAttribute('aria-label', title); b.onclick = fn; acts.appendChild(b); };
+        mk(ICON.play, 'Play now', () => playItem(S.queue.splice(i, 1)[0]));
+        if (i > 0) mk(ICON.up, 'Move up', () => { const [x] = S.queue.splice(i, 1); S.queue.splice(i - 1, 0, x); save(); render(); });
+        mk(ICON.x, 'Remove', () => { S.queue.splice(i, 1); save(); render(); if (!S.current) S.queue.length ? showNext() : showIdle(); });
+        li.appendChild(acts);
+        q.appendChild(li);
+      });
+      freshId = null;
+      const c = S.current;
+      $('#nowWho').textContent = c ? c.singer : 'Nobody yet';
+      $('#nowWhat').textContent = c ? c.title : 'Scan the QR code to get on the list';
+      const n = S.queue[0];
+      $('#upNextHint').innerHTML = '';
+      if (n && c) { $('#upNextHint').append('Up next: '); $('#upNextHint').appendChild(el('b', null, n.singer)); }
+    }
+
+    // ----- overlays -----
+    function overlay(which) { for (const id of ['ovIdle', 'ovNext', 'ovErr']) $('#' + id).hidden = id !== which; }
+    function showIdle() { overlay('ovIdle'); }
+    function showNext() {
+      const n = S.queue[0];
+      if (!n) return showIdle();
+      $('#nextWho').textContent = n.singer; $('#nextWhat').textContent = n.title;
+      overlay('ovNext');
+    }
+
+    // ----- player -----
+    let player = null, ready = false, pending = null;
+    window.onYouTubeIframeAPIReady = () => {
+      player = new YT.Player('player', {
+        host: 'https://www.youtube-nocookie.com',
+        width: '100%', height: '100%',
+        playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3 },
+        events: {
+          onReady: () => { ready = true; if (pending) { player.loadVideoById(pending); pending = null; } },
+          onStateChange: (e) => { if (e.data === YT.PlayerState.ENDED) advance(); },
+          onError: (e) => onErr(e.data)
+        }
+      });
+    };
+    const tag = document.createElement('script'); tag.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(tag);
+
+    function playItem(item) {
+      if (!item) return;
+      S.current = item; save(); render(); overlay(null);
+      if (ready) player.loadVideoById(item.videoId); else pending = item.videoId;
+    }
+    function advance() {
+      S.current = null; save(); render();
+      if (!S.queue.length) return showIdle();
+      if (S.autostart) playItem(S.queue.shift()); else showNext();
+    }
+    function stopVideo() { try { player && ready && player.stopVideo(); } catch {} }
+    function onErr(code) {
+      const c = S.current;
+      if (code === 2 || code === 5) return; // bad param / html5 error: let YouTube show its own message
+      $('#errWho').textContent = c ? c.singer + ': ' + c.title : '';
+      $('#errOpen').href = 'https://www.youtube.com/watch?v=' + (c ? c.videoId : '');
+      overlay('ovErr');
+    }
+
+    $('#startNext').onclick = () => playItem(S.queue.shift());
+    $('#skipNext').onclick = () => { S.queue.shift(); save(); render(); showNext(); };
+    $('#errSkip').onclick = () => { stopVideo(); advance(); };
+    $('#nextBtn').onclick = () => { stopVideo(); advance(); };
+    $('#restartBtn').onclick = () => { try { ready && player.seekTo(0, true); player.playVideo(); } catch {} };
+
+    // ----- host search -----
+    $('#hostSinger').value = store.get('hostSinger', '');
+    $('#hostSinger').oninput = (e) => store.set('hostSinger', e.target.value);
+    $('#closeResults').onclick = () => { $('#hostResults').hidden = true; };
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#hostResults').hidden = true; });
+
+    $('#hostSearch').onsubmit = async (e) => {
+      e.preventDefault();
+      const q = $('#hostQ').value.trim(); if (!q) return;
+      const list = $('#hostResultsList'); list.innerHTML = '';
+      $('#hostResults').hidden = false;
+      const linkId = parseVideoId(q);
+      if (linkId) {
+        list.appendChild(el('div', 'note', 'Loading video...'));
+        const title = (await fetchTitle(linkId)) || 'YouTube video';
+        list.innerHTML = ''; list.appendChild(resultRow({ videoId: linkId, title, channel: '', thumb: thumb(linkId) }));
+        return;
+      }
+      if (!S.key) {
+        list.appendChild(el('div', 'note', 'To search here, add a free YouTube API key in Settings (gear icon). You can also paste any YouTube link into the search box.'));
+        return;
+      }
+      list.appendChild(el('div', 'note', 'Searching...'));
+      try {
+        const items = await ytSearch(q + ' karaoke', S.key);
+        list.innerHTML = '';
+        if (!items.length) list.appendChild(el('div', 'note', 'No results. Try different words.'));
+        items.forEach(it => list.appendChild(resultRow(it)));
+      } catch (err) { list.innerHTML = ''; list.appendChild(el('div', 'note', 'Search error: ' + err.message)); }
+    };
+    function resultRow(it) {
+      const r = el('div', 'result');
+      const img = el('img'); img.src = it.thumb; img.alt = ''; img.loading = 'lazy'; r.appendChild(img);
+      const t = el('div'); t.appendChild(el('div', 't', it.title)); if (it.channel) t.appendChild(el('div', 'c', it.channel)); r.appendChild(t);
+      const b = el('div', 'b');
+      const name = () => $('#hostSinger').value.trim().slice(0, 40) || 'Host';
+      const mkItem = () => ({ id: 'h' + Date.now(), singer: name(), title: it.title, videoId: it.videoId });
+      const play = el('button', 'btn small', 'Play now'); play.onclick = () => { $('#hostResults').hidden = true; playItem(mkItem()); };
+      const add = el('button', 'btn small primary', 'Add to list'); add.onclick = () => { addToQueue(mkItem(), true); add.textContent = 'Added'; add.disabled = true; };
+      b.append(play, add); r.appendChild(b);
+      return r;
+    }
+
+    // ----- settings -----
+    const dlg = $('#settings');
+    $('#openSettings').onclick = () => { $('#apiKey').value = S.key; $('#autoStart').checked = S.autostart; $('#guestLink').value = guestUrl(); dlg.showModal(); };
+    $('#saveSettings').onclick = () => {
+      S.key = $('#apiKey').value.trim(); S.autostart = $('#autoStart').checked; save(); renderQR(); dlg.close();
+    };
+    $('#copyLink').onclick = async () => { try { await navigator.clipboard.writeText(guestUrl()); $('#copyLink').textContent = 'Copied'; setTimeout(() => $('#copyLink').textContent = 'Copy link', 1500); } catch {} };
+    $('#newNight').onclick = () => {
+      if (!confirm('Clear the list and make a new QR code? Old sign-up links will stop working.')) return;
+      S.topic = newTopic(); S.queue = []; S.current = null; S.lastId = null; S.seen = [];
+      save(); stopVideo(); renderQR(); render(); showIdle(); connect(); dlg.close();
+    };
+
+    let toastT;
+    function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3200); }
+
+    // ----- projection mode: hide controls after 3s of no mouse/keys -----
+    let uiT;
+    const busy = () => !$('#hostResults').hidden || dlg.open || ['INPUT', 'TEXTAREA'].includes((document.activeElement || {}).tagName);
+    function wake() {
+      document.body.classList.remove('ui-hidden');
+      clearTimeout(uiT);
+      uiT = setTimeout(function hide() { if (busy()) { uiT = setTimeout(hide, 3000); return; } document.body.classList.add('ui-hidden'); }, 3000);
+    }
+    ['mousemove', 'mousedown', 'touchstart'].forEach(ev => document.addEventListener(ev, wake, { passive: true }));
+
+    // ----- keyboard shortcuts -----
+    const visible = (id) => !$('#' + id).hidden;
+    function goNext() {
+      if (visible('ovNext')) return S.queue.length && playItem(S.queue.shift());
+      stopVideo(); advance();
+    }
+    function toggleFullscreen() {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      else document.documentElement.requestFullscreen().catch(() => {});
+    }
+    document.addEventListener('keydown', (e) => {
+      const typing = ['INPUT', 'TEXTAREA'].includes((e.target || {}).tagName);
+      if (e.key === 'Escape') { $('#hostResults').hidden = true; if (typing) e.target.blur(); return; }
+      if (typing || dlg.open || e.metaKey || e.ctrlKey || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k === 'n' || e.key === 'ArrowRight') { e.preventDefault(); goNext(); }
+      else if (k === 'r') { $('#restartBtn').click(); }
+      else if (k === 'f') { toggleFullscreen(); }
+      else if (k === 's' || e.key === '/') { e.preventDefault(); wake(); $('#hostQ').focus(); }
+    });
+
+    // ----- boot -----
+    wake();
+    renderQR(); render();
+    if (S.current) { const c = S.current; S.current = null; S.queue.unshift(c); save(); render(); }
+    S.queue.length ? showNext() : showIdle();
+    connect();
+
+    window.__kq = { S, receive, parseVideoId, render }; // for testing
+  }
+
+  // =====================================================================
+  // GUEST (phone)
+  // =====================================================================
+  function guest() {
+    $('#guest').hidden = false;
+    if (!/^[\w-]{1,64}$/.test(JOIN)) { $('#gForm').hidden = true; $('#gBad').hidden = false; return; }
+    const key = params.get('k') || '';
+    let pick = null;
+
+    $('#gName').value = store.get('name', '');
+    $('#gName').oninput = () => { store.set('name', $('#gName').value); update(); };
+    $('#gNoKey').hidden = !!key;
+
+    function update() { $('#gSubmit').disabled = !(pick && $('#gName').value.trim()); }
+    function setPick(p) {
+      pick = p;
+      $('#gPickedCard').hidden = !p;
+      if (p) { $('#gPickedImg').src = thumb(p.videoId); $('#gPickedTitle').textContent = p.title; }
+      update();
+    }
+
+    $('#gSearch').onsubmit = async (e) => {
+      e.preventDefault();
+      const raw = $('#gQ').value.trim(); if (!raw) return;
+      const q = raw + ($('#gKaraoke').checked ? ' karaoke' : '');
+      $('#gSearchErr').hidden = true;
+      if (!key) { window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank'); return; }
+      const ul = $('#gResults'); ul.innerHTML = ''; ul.appendChild(el('li', 'note', 'Searching...'));
+      try {
+        const items = await ytSearch(q, key);
+        ul.innerHTML = '';
+        if (!items.length) ul.appendChild(el('li', 'note', 'No results. Try different words.'));
+        items.forEach(it => {
+          const li = el('li'); const b = el('button');
+          const img = el('img'); img.src = it.thumb; img.alt = ''; img.loading = 'lazy'; b.appendChild(img);
+          const t = el('div'); t.appendChild(el('div', 't', it.title)); t.appendChild(el('div', 'c', it.channel)); b.appendChild(t);
+          b.onclick = () => { ul.querySelectorAll('button').forEach(x => x.classList.remove('sel')); b.classList.add('sel'); setPick({ videoId: it.videoId, title: it.title }); $('#gName').scrollIntoView({ behavior: 'smooth', block: 'center' }); if (!$('#gName').value.trim()) setTimeout(() => $('#gName').focus({ preventScroll: true }), 350); };
+          li.appendChild(b); ul.appendChild(li);
+        });
+      } catch (err) {
+        ul.innerHTML = '';
+        $('#gSearchErr').textContent = "Search isn't working right now. Search in YouTube and paste the link below.";
+        $('#gSearchErr').hidden = false;
+      }
+    };
+
+    let linkT;
+    $('#gLink').oninput = () => {
+      clearTimeout(linkT);
+      linkT = setTimeout(async () => {
+        const id = parseVideoId($('#gLink').value);
+        if (!id) { if ($('#gLink').value.trim()) { $('#gErr').textContent = "That doesn't look like a YouTube link."; $('#gErr').hidden = false; } return; }
+        $('#gErr').hidden = true;
+        $('#gResults').querySelectorAll('button').forEach(x => x.classList.remove('sel'));
+        setPick({ videoId: id, title: $('#gQ').value.trim() || 'Loading title...' });
+        const title = await fetchTitle(id);
+        if (pick && pick.videoId === id) setPick({ videoId: id, title: title || $('#gQ').value.trim() || 'YouTube video' });
+      }, 250);
+    };
+
+    $('#gSubmit').onclick = async () => {
+      const singer = $('#gName').value.trim().slice(0, 40);
+      if (!singer || !pick) return;
+      const btn = $('#gSubmit'); btn.disabled = true; btn.textContent = 'Sending...'; $('#gErr').hidden = true;
+      try {
+        const r = await fetch(RELAY + JOIN, { method: 'POST', body: JSON.stringify({ singer, title: pick.title.slice(0, 140), videoId: pick.videoId }) });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        $('#gDoneMsg').textContent = singer + ', you’re signed up for "' + pick.title + '". Watch the screen for your name.';
+        $('#gForm').hidden = true; $('#gDone').hidden = false;
+      } catch (err) {
+        $('#gErr').textContent = "Couldn't send that. Check your connection and try again.";
+        $('#gErr').hidden = false;
+      } finally { btn.textContent = 'Add me to the list'; update(); }
+    };
+
+    $('#gAgain').onclick = () => {
+      setPick(null); $('#gQ').value = ''; $('#gLink').value = ''; $('#gResults').innerHTML = '';
+      $('#gDone').hidden = true; $('#gForm').hidden = false; window.scrollTo(0, 0);
+    };
+    update();
+  }
+})();
+</script>
+</body>
+</html>
