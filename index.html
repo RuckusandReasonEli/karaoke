@@ -43,7 +43,8 @@ button{cursor:pointer;border:0;background:none}
 .side-head .logo{font-size:22px}
 .count{font-size:13px;color:var(--muted)}
 .queue{list-style:none;flex:1;overflow-y:auto;padding:4px 12px 12px;min-height:0}
-.queue li{display:grid;grid-template-columns:32px 1fr auto;gap:10px;align-items:center;padding:12px 10px;border-radius:12px;margin-bottom:6px;background:var(--panel-2);border:1px solid transparent}
+.queue li{cursor:pointer;display:grid;grid-template-columns:32px 1fr auto;gap:10px;align-items:center;padding:12px 10px;border-radius:12px;margin-bottom:6px;background:var(--panel-2);border:1px solid transparent}
+.queue li:hover{border-color:var(--line);background:#25203a}
 .queue li.fresh{animation:fresh 2.4s ease-out}
 @keyframes fresh{0%{border-color:var(--pink);background:var(--pink-soft)}100%{border-color:transparent;background:var(--panel-2)}}
 .queue .num{font-family:var(--display);font-size:18px;color:var(--dim);text-align:center}
@@ -104,7 +105,8 @@ button{cursor:pointer;border:0;background:none}
 /* Projection mode: host controls fade out when the mouse is still */
 .topbar,.nowbar .btn,.queue .acts-wrap{transition:opacity .4s}
 .shield{position:absolute;inset:0;z-index:4;display:none}
-.ui-hidden .topbar,.ui-hidden .nowbar .btn,.ui-hidden .queue .acts{opacity:0;pointer-events:none}
+.ui-hidden .topbar,.ui-hidden .nowbar .btn,.ui-hidden .queue .acts{opacity:0 !important;pointer-events:none}
+.ui-hidden .queue li:hover{border-color:transparent;background:var(--panel-2)}
 .ui-hidden .shield{display:block}
 .ui-hidden,.ui-hidden *{cursor:none !important}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;color:var(--muted)}
@@ -144,6 +146,12 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
 .picked img{width:104px;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:var(--line)}
 .picked .t{font-weight:700}
 .err{color:var(--red);font-size:14px;margin-top:8px}
+.hint{font-size:14px;color:var(--muted);margin-top:10px}
+.pick-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.link-btn{color:var(--pink);font-weight:700;font-size:14px;padding:4px}
+.pick-fields{display:flex;flex-direction:column;gap:8px;min-width:0}
+.input.slim{padding:9px 12px;font-size:15px}
+.picked{align-items:start}
 .big-btn{width:100%;padding:16px;font-size:18px;border-radius:12px}
 .done{text-align:center;padding:40px 16px}
 .done .logo{font-size:34px;margin-bottom:10px}
@@ -169,6 +177,7 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
         <h3>Scan to sing</h3>
         <p>Pick your song on your phone and you'll be added to the list.</p>
         <div class="live" id="live"><i></i><span>Connecting</span></div>
+        <div class="warn" id="keyWarn" hidden>Song search is off. Add a YouTube API key in Settings (gear icon).</div>
         <div class="warn" id="fileWarn" hidden>Opened as a local file. Host this page online so phones can open the QR link.</div>
       </div>
     </div>
@@ -243,9 +252,9 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
   <dialog id="settings">
     <h2>Settings</h2>
     <div class="field">
-      <label class="label" for="apiKey">YouTube API key (optional)</label>
+      <label class="label" for="apiKey">YouTube API key (required for song search)</label>
       <input class="input" id="apiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
-      <p class="help">Lets you and your guests search YouTube right inside the app. Without it, guests search in the YouTube app and paste the link. Get a free key at <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">Google Cloud</a> (enable "YouTube Data API v3", then Credentials, Create API key). Free quota covers about 100 searches a day.</p>
+      <p class="help">Guests search YouTube on their phones with this key. Get a free one at <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">Google Cloud</a>: enable "YouTube Data API v3", then Credentials, Create API key. The free quota covers about 100 searches a day.</p>
     </div>
     <div class="field">
       <label class="check"><input type="checkbox" id="autoStart"> Start the next song automatically</label>
@@ -286,41 +295,45 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
       <p>Pick your karaoke track, add your name, and you're on the list.</p>
     </header>
 
-    <div class="card">
-      <label class="label" for="gQ">1. Find your song</label>
+    <div class="card" id="gStep1">
+      <label class="label" for="gQ">1. Search for your song</label>
       <form id="gSearch" class="search-row" autocomplete="off">
         <input class="input" id="gQ" placeholder="Song or artist" enterkeyhint="search">
         <button class="btn primary" type="submit">Search</button>
       </form>
       <label class="toggle"><input type="checkbox" id="gKaraoke" checked> Karaoke versions only</label>
-      <div id="gNoKey" hidden>
-        <ol class="steps">
-          <li>Tap Search. YouTube opens in a new tab.</li>
-          <li>On the video you want, tap Share, then Copy link.</li>
-          <li>Come back here and paste it below.</li>
-        </ol>
-      </div>
+      <p class="hint" id="gTapHint" hidden>Tap the one you want.</p>
       <ul class="g-results" id="gResults"></ul>
       <p class="err" id="gSearchErr" hidden></p>
-
-      <div class="divider">or paste a YouTube link</div>
-      <input class="input" id="gLink" placeholder="https://youtu.be/..." inputmode="url" autocomplete="off">
     </div>
 
-    <div class="card" id="gPickedCard" hidden>
-      <label class="label">Your pick</label>
-      <div class="picked">
-        <img id="gPickedImg" alt="">
-        <div class="t" id="gPickedTitle"></div>
+    <div class="card" id="gNoKey" hidden>
+      <label class="label">Song search is off</label>
+      <p class="hint" style="margin:0">The host hasn't turned on song search yet. Let them know, then scan the QR code again.</p>
+    </div>
+
+    <form id="gFinish" autocomplete="off" hidden>
+      <div class="card">
+        <div class="pick-head">
+          <label class="label" style="margin:0">2. Your song</label>
+          <button type="button" class="link-btn" id="gChange">Change</button>
+        </div>
+        <div class="picked">
+          <img id="gPickedImg" alt="">
+          <div class="pick-fields">
+            <input class="input slim" id="gSong" placeholder="Song" maxlength="80" aria-label="Song">
+            <input class="input slim" id="gArtist" placeholder="Artist" maxlength="60" aria-label="Artist">
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div class="card">
-      <label class="label" for="gName">2. Your name</label>
-      <input class="input" id="gName" placeholder="Name on the list" maxlength="40" autocomplete="given-name">
-    </div>
+      <div class="card">
+        <label class="label" for="gName">3. Your name</label>
+        <input class="input" id="gName" placeholder="Name on the list" maxlength="40" autocomplete="given-name" enterkeyhint="go">
+      </div>
 
-    <button class="btn primary big-btn" id="gSubmit" disabled>Add me to the list</button>
+      <button class="btn primary big-btn" id="gSubmit" type="submit" disabled>Add me to the list</button>
+    </form>
     <p class="err" id="gErr" hidden></p>
   </div>
 
@@ -388,6 +401,38 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
       return j.title || null;
     } catch { return null; }
   }
+  // Split a YouTube karaoke title into song + artist (best guess; guests can edit)
+  const JUNK_WORDS = /\b(karaoke|instrumental|lyrics?|lyric video|backing track|sing[ -]?along|with vocals?|no vocals?|without vocals?|lower key|higher key|male key|female key|official|version|video|audio|hd|4k|minus one|piano|acoustic|cover|sing king|karafun|in the style of)\b/gi;
+  const isJunk = (x) => String(x).replace(JUNK_WORDS, '').replace(/[^\p{L}\p{N}]+/gu, '').length === 0;
+  function splitTitle(raw, query) {
+    let t = String(raw || '').trim();
+    const segs = t.split(/\s*[|•]\s*/).filter(x => x.trim());
+    let main = segs.find(x => !isJunk(x)) || t;
+    let trailing = '';
+    main = main.replace(/[(\[{]([^)\]}]*)[)\]}]/g, (m, inner) => isJunk(inner) ? ' \u0001 ' : m);
+    if (main.includes('\u0001')) {
+      const parts = main.split('\u0001');
+      const after = parts.slice(1).join(' ').trim();
+      if (after && !/\s[-–—]\s/.test(main)) { trailing = after; main = parts[0]; }
+      else main = parts.join(' ');
+    }
+    main = main.replace(/\b(karaoke version|karaoke instrumental|karaoke with lyrics|karaoke|instrumental version|with lyrics|sing along)\b/gi, ' ');
+    const tidy = (x) => String(x || '').replace(/\s{2,}/g, ' ').replace(/^[\s\-–—:,.]+|[\s\-–—:,.]+$/g, '').replace(/^["'“‘]+|["'”’]+$/g, '').trim();
+    main = tidy(main);
+    let song = main, artist = tidy(trailing);
+    let m = main.match(/^(.+?)\s+[-–—]\s+(.+)$/);
+    if (m) {
+      artist = tidy(m[1]); song = tidy(m[2]);
+      // Most titles are "Artist - Song"; if the search words match the left side better, it's "Song - Artist"
+      const words = String(query || '').toLowerCase().replace(JUNK_WORDS, ' ').split(/[^\p{L}\p{N}']+/u).filter(w => w.length > 1);
+      const score = (x) => { const ws = x.toLowerCase().split(/[^\p{L}\p{N}']+/u).filter(w => w.length > 1); return ws.length ? ws.filter(w => words.includes(w)).length / ws.length : 0; };
+      if (words.length && score(artist) > score(song)) { const tmp = artist; artist = song; song = tmp; }
+    }
+    else if ((m = main.match(/^(.+?)\s+by\s+(.+)$/i))) { song = tidy(m[1]); artist = tidy(m[2]); }
+    return { song: song || tidy(raw), artist };
+  }
+  const songLine = (it) => { const p = it.song ? it : splitTitle(it.title || 'YouTube video'); return p.artist ? p.song + ' by ' + p.artist : p.song; };
+
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
   if (JOIN !== null) guest(); else host();
@@ -425,6 +470,7 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
       } catch (e) { $('#qrSmall').textContent = 'QR failed to load'; }
       $('#guestLink').value = url;
       $('#fileWarn').hidden = location.protocol !== 'file:';
+      $('#keyWarn').hidden = !!S.key;
     }
 
     // ----- live relay -----
@@ -446,7 +492,10 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
       const videoId = cleanId(m.videoId);
       const singer = String(m.singer || '').trim().slice(0, 40);
       if (!videoId || !singer) { save(); return; }
-      addToQueue({ id: j.id, singer, title: String(m.title || 'YouTube video').trim().slice(0, 140), videoId }, true);
+      const title = String(m.title || 'YouTube video').trim().slice(0, 140);
+      let song = String(m.song || '').trim().slice(0, 80), artist = String(m.artist || '').trim().slice(0, 60);
+      if (!song) { const p = splitTitle(title); song = p.song; artist = p.artist; }
+      addToQueue({ id: j.id, singer, song, artist, title, videoId }, true);
       toast(singer + ' is on the list!');
     }
 
@@ -470,11 +519,12 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
         li.appendChild(el('div', 'num', String(i + 1)));
         const info = el('div'); info.style.minWidth = '0';
         info.appendChild(el('div', 'singer', it.singer));
-        info.appendChild(el('div', 'song', it.title));
+        info.appendChild(el('div', 'song', songLine(it)));
         li.appendChild(info);
         const acts = el('div', 'acts');
-        const mk = (svg, title, fn) => { const b = el('button', 'icon-btn'); b.innerHTML = svg; b.title = title; b.setAttribute('aria-label', title); b.onclick = fn; acts.appendChild(b); };
-        mk(ICON.play, 'Play now', () => playItem(S.queue.splice(i, 1)[0]));
+        const mk = (svg, title, fn) => { const b = el('button', 'icon-btn'); b.innerHTML = svg; b.title = title; b.setAttribute('aria-label', title); b.onclick = (e) => { e.stopPropagation(); fn(); }; acts.appendChild(b); };
+        li.title = 'Play ' + it.singer + '\u2019s song';
+        li.onclick = () => playItem(S.queue.splice(i, 1)[0]);
         if (i > 0) mk(ICON.up, 'Move up', () => { const [x] = S.queue.splice(i, 1); S.queue.splice(i - 1, 0, x); save(); render(); });
         mk(ICON.x, 'Remove', () => { S.queue.splice(i, 1); save(); render(); if (!S.current) S.queue.length ? showNext() : showIdle(); });
         li.appendChild(acts);
@@ -483,7 +533,7 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
       freshId = null;
       const c = S.current;
       $('#nowWho').textContent = c ? c.singer : 'Nobody yet';
-      $('#nowWhat').textContent = c ? c.title : 'Scan the QR code to get on the list';
+      $('#nowWhat').textContent = c ? songLine(c) : 'Scan the QR code to get on the list';
       const n = S.queue[0];
       $('#upNextHint').innerHTML = '';
       if (n && c) { $('#upNextHint').append('Up next: '); $('#upNextHint').appendChild(el('b', null, n.singer)); }
@@ -495,7 +545,7 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
     function showNext() {
       const n = S.queue[0];
       if (!n) return showIdle();
-      $('#nextWho').textContent = n.singer; $('#nextWhat').textContent = n.title;
+      $('#nextWho').textContent = n.singer; $('#nextWhat').textContent = songLine(n);
       overlay('ovNext');
     }
 
@@ -529,7 +579,7 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
     function onErr(code) {
       const c = S.current;
       if (code === 2 || code === 5) return; // bad param / html5 error: let YouTube show its own message
-      $('#errWho').textContent = c ? c.singer + ': ' + c.title : '';
+      $('#errWho').textContent = c ? c.singer + ': ' + songLine(c) : '';
       $('#errOpen').href = 'https://www.youtube.com/watch?v=' + (c ? c.videoId : '');
       overlay('ovErr');
     }
@@ -576,7 +626,7 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
       const t = el('div'); t.appendChild(el('div', 't', it.title)); if (it.channel) t.appendChild(el('div', 'c', it.channel)); r.appendChild(t);
       const b = el('div', 'b');
       const name = () => $('#hostSinger').value.trim().slice(0, 40) || 'Host';
-      const mkItem = () => ({ id: 'h' + Date.now(), singer: name(), title: it.title, videoId: it.videoId });
+      const mkItem = () => { const p = splitTitle(it.title, $('#hostQ').value); return { id: 'h' + Date.now(), singer: name(), song: p.song, artist: p.artist, title: it.title, videoId: it.videoId }; };
       const play = el('button', 'btn small', 'Play now'); play.onclick = () => { $('#hostResults').hidden = true; playItem(mkItem()); };
       const add = el('button', 'btn small primary', 'Add to list'); add.onclick = () => { addToQueue(mkItem(), true); add.textContent = 'Added'; add.disabled = true; };
       b.append(play, add); r.appendChild(b);
@@ -647,68 +697,66 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
     $('#guest').hidden = false;
     if (!/^[\w-]{1,64}$/.test(JOIN)) { $('#gForm').hidden = true; $('#gBad').hidden = false; return; }
     const key = params.get('k') || '';
+    if (!key) { $('#gStep1').hidden = true; $('#gNoKey').hidden = false; return; }
     let pick = null;
 
     $('#gName').value = store.get('name', '');
-    $('#gName').oninput = () => { store.set('name', $('#gName').value); update(); };
-    $('#gNoKey').hidden = !!key;
+    const update = () => { $('#gSubmit').disabled = !(pick && $('#gName').value.trim() && $('#gSong').value.trim()); };
+    ['gName', 'gSong', 'gArtist'].forEach(id => $('#' + id).addEventListener('input', update));
+    $('#gName').addEventListener('input', () => store.set('name', $('#gName').value));
 
-    function update() { $('#gSubmit').disabled = !(pick && $('#gName').value.trim()); }
-    function setPick(p) {
-      pick = p;
-      $('#gPickedCard').hidden = !p;
-      if (p) { $('#gPickedImg').src = thumb(p.videoId); $('#gPickedTitle').textContent = p.title; }
+    function choose(it) {
+      const parts = splitTitle(it.title, $('#gQ').value);
+      pick = { videoId: it.videoId, title: it.title };
+      $('#gPickedImg').src = it.thumb || thumb(it.videoId);
+      $('#gSong').value = parts.song;
+      $('#gArtist').value = parts.artist;
+      $('#gStep1').hidden = true; $('#gFinish').hidden = false; $('#gErr').hidden = true;
       update();
+      window.scrollTo(0, 0);
+      if (!$('#gName').value.trim()) $('#gName').focus({ preventScroll: true });
     }
+    $('#gChange').onclick = () => { pick = null; $('#gFinish').hidden = true; $('#gStep1').hidden = false; update(); };
 
     $('#gSearch').onsubmit = async (e) => {
       e.preventDefault();
       const raw = $('#gQ').value.trim(); if (!raw) return;
+      $('#gQ').blur();
       const q = raw + ($('#gKaraoke').checked ? ' karaoke' : '');
-      $('#gSearchErr').hidden = true;
-      if (!key) { window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank'); return; }
+      $('#gSearchErr').hidden = true; $('#gTapHint').hidden = true;
       const ul = $('#gResults'); ul.innerHTML = ''; ul.appendChild(el('li', 'note', 'Searching...'));
       try {
         const items = await ytSearch(q, key);
         ul.innerHTML = '';
-        if (!items.length) ul.appendChild(el('li', 'note', 'No results. Try different words.'));
+        if (!items.length) { ul.appendChild(el('li', 'note', 'No results. Try different words.')); return; }
+        $('#gTapHint').hidden = false;
         items.forEach(it => {
-          const li = el('li'); const b = el('button');
+          const li = el('li'); const b = el('button'); b.type = 'button';
           const img = el('img'); img.src = it.thumb; img.alt = ''; img.loading = 'lazy'; b.appendChild(img);
           const t = el('div'); t.appendChild(el('div', 't', it.title)); t.appendChild(el('div', 'c', it.channel)); b.appendChild(t);
-          b.onclick = () => { ul.querySelectorAll('button').forEach(x => x.classList.remove('sel')); b.classList.add('sel'); setPick({ videoId: it.videoId, title: it.title }); $('#gName').scrollIntoView({ behavior: 'smooth', block: 'center' }); if (!$('#gName').value.trim()) setTimeout(() => $('#gName').focus({ preventScroll: true }), 350); };
+          b.onclick = () => choose(it);
           li.appendChild(b); ul.appendChild(li);
         });
       } catch (err) {
         ul.innerHTML = '';
-        $('#gSearchErr').textContent = "Search isn't working right now. Search in YouTube and paste the link below.";
+        $('#gSearchErr').textContent = "Search isn't working right now. Give it a moment and try again.";
         $('#gSearchErr').hidden = false;
       }
     };
 
-    let linkT;
-    $('#gLink').oninput = () => {
-      clearTimeout(linkT);
-      linkT = setTimeout(async () => {
-        const id = parseVideoId($('#gLink').value);
-        if (!id) { if ($('#gLink').value.trim()) { $('#gErr').textContent = "That doesn't look like a YouTube link."; $('#gErr').hidden = false; } return; }
-        $('#gErr').hidden = true;
-        $('#gResults').querySelectorAll('button').forEach(x => x.classList.remove('sel'));
-        setPick({ videoId: id, title: $('#gQ').value.trim() || 'Loading title...' });
-        const title = await fetchTitle(id);
-        if (pick && pick.videoId === id) setPick({ videoId: id, title: title || $('#gQ').value.trim() || 'YouTube video' });
-      }, 250);
-    };
-
-    $('#gSubmit').onclick = async () => {
+    $('#gFinish').onsubmit = async (e) => {
+      e.preventDefault();
       const singer = $('#gName').value.trim().slice(0, 40);
-      if (!singer || !pick) return;
+      const song = $('#gSong').value.trim().slice(0, 80);
+      const artist = $('#gArtist').value.trim().slice(0, 60);
+      if (!singer || !song || !pick) return;
+      $('#gName').blur();
       const btn = $('#gSubmit'); btn.disabled = true; btn.textContent = 'Sending...'; $('#gErr').hidden = true;
       try {
-        const r = await fetch(RELAY + JOIN, { method: 'POST', body: JSON.stringify({ singer, title: pick.title.slice(0, 140), videoId: pick.videoId }) });
+        const r = await fetch(RELAY + JOIN, { method: 'POST', body: JSON.stringify({ singer, song, artist, title: pick.title.slice(0, 140), videoId: pick.videoId }) });
         if (!r.ok) throw new Error('HTTP ' + r.status);
-        $('#gDoneMsg').textContent = singer + ', you’re signed up for "' + pick.title + '". Watch the screen for your name.';
-        $('#gForm').hidden = true; $('#gDone').hidden = false;
+        $('#gDoneMsg').textContent = singer + ', you’re signed up to sing "' + song + '"' + (artist ? ' by ' + artist : '') + '. Watch the screen for your name.';
+        $('#gForm').hidden = true; $('#gDone').hidden = false; window.scrollTo(0, 0);
       } catch (err) {
         $('#gErr').textContent = "Couldn't send that. Check your connection and try again.";
         $('#gErr').hidden = false;
@@ -716,8 +764,10 @@ dialog .foot{display:flex;gap:10px;justify-content:space-between;margin-top:20px
     };
 
     $('#gAgain').onclick = () => {
-      setPick(null); $('#gQ').value = ''; $('#gLink').value = ''; $('#gResults').innerHTML = '';
+      pick = null; $('#gQ').value = ''; $('#gResults').innerHTML = ''; $('#gTapHint').hidden = true;
+      $('#gFinish').hidden = true; $('#gStep1').hidden = false;
       $('#gDone').hidden = true; $('#gForm').hidden = false; window.scrollTo(0, 0);
+      update();
     };
     update();
   }
