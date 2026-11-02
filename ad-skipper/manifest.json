@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Karaoke Ad Skipper",
+  "version": "1.0.0",
+  "description": "For the Ruckus & Reason karaoke screen: mutes YouTube ads, clicks Skip, and tells the karaoke page to show its Song Loading banner.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/embed/*",
+        "https://www.youtube-nocookie.com/embed/*"
+      ],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_start"
+    }
+  ]
+}

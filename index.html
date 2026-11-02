@@ -6,7 +6,7 @@
 <title>Karaoke Queue</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Bungee+Inline&family=Monoton&family=Neonderthaw&family=Yellowtail&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Bungee+Inline&family=Rye&family=Monoton&family=Neonderthaw&family=Yellowtail&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=ZCOOL+QingKe+HuangYou&text=%E5%86%8D%E6%9D%A5%E4%B8%80%E6%9D%AF%E5%95%A4%E9%85%92%EF%BC%8C%E9%A6%96%E6%AD%8C%E3%80%82%E5%8D%A1%E6%8B%89%E4%B9%8B%E5%A4%9C%E5%94%B1%EF%BC%81OK&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
@@ -292,6 +292,34 @@ body:has(#guest:not([hidden])){background:
 .signband{height:clamp(70px,9vh,100px)}
 .papel{right:180px}
 .stage{padding:clamp(34px,5vh,60px) clamp(150px,11vw,210px) clamp(44px,7vh,80px) clamp(40px,3vw,60px)}
+
+/* ---- carnival "Song Loading" banner shown while an ad is being skipped ---- */
+.carny{position:absolute;z-index:9;left:50%;top:0;transform:translate(-50%,-62%);width:min(58%,820px);pointer-events:none;
+  font-size:clamp(16px,1.6cqw,26px);filter:drop-shadow(0 18px 20px rgba(0,0,0,.6));animation:carnyDrop .7s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes carnyDrop{from{transform:translate(-50%,-160%) rotate(-4deg)}to{transform:translate(-50%,-62%)}}
+.carny-valance{height:1.6em;margin:0 -1.2em;border-radius:.4em .4em 0 0;
+  background:repeating-linear-gradient(90deg,#d7172a 0 2.2em,#fff3dc 2.2em 4.4em);
+  -webkit-mask:radial-gradient(1.1em 0.9em at 1.1em 100%,transparent 98%,#000) 0 0/2.2em 100% repeat-x;
+  mask:radial-gradient(1.1em 0.9em at 1.1em 100%,transparent 98%,#000) 0 0/2.2em 100% repeat-x;
+  box-shadow:inset 0 .25em 0 #ffcc33}
+.carny-board{display:flex;align-items:center;justify-content:center;gap:1em;margin-top:-.5em;padding:.9em 1.4em 1em;border-radius:.5em;
+  background:radial-gradient(ellipse at 50% 0,#b9121f,#7a0812 75%);border:.3em solid #ffcc33;
+  box-shadow:0 0 0 .18em #7a0812,0 0 0 .32em #fff3dc,.3em .4em 0 .32em #3d0308}
+.carny-board::after{inset:.35em;padding:.55em}
+.carny-text{text-align:center;line-height:1}
+.carny-1{font-family:'Rye',serif;font-size:1.25em;letter-spacing:.06em;color:#fff3dc;text-shadow:0 .08em 0 #3d0308}
+.carny-2{font-family:'Rye',serif;font-size:2.6em;margin-top:.12em;color:#ffd23f;
+  -webkit-text-stroke:.03em #5a0610;text-shadow:.04em .06em 0 #5a0610,.08em .12em 0 #2a0206,0 0 .4em rgba(255,210,63,.55);
+  animation:carnyPulse 1s ease-in-out infinite alternate}
+@keyframes carnyPulse{to{transform:scale(1.06)}}
+.carny-wheel{flex:none;width:2.6em;height:2.6em;border-radius:50%;border:.2em solid #ffcc33;
+  background:conic-gradient(#d7172a 0 45deg,#fff3dc 0 90deg,#2ee6ff 0 135deg,#fff3dc 0 180deg,#d7172a 0 225deg,#fff3dc 0 270deg,#ffd23f 0 315deg,#fff3dc 0 360deg);
+  box-shadow:0 0 0 .12em #7a0812,0 0 .8em rgba(255,204,51,.6);animation:spin 1.2s linear infinite}
+.carny-wheel:last-child{animation-direction:reverse}
+.carny-flags{display:flex;justify-content:space-between;padding:0 1.2em;margin-top:-.1em}
+.carny-flags i{width:1.3em;height:1.5em;clip-path:polygon(0 0,100% 0,50% 100%);background:#ffcc33;animation:sway 2.4s ease-in-out infinite alternate;transform-origin:50% 0}
+.carny-flags i:nth-child(3n+1){background:#d7172a}
+.carny-flags i:nth-child(3n+2){background:#2ee6ff;animation-delay:-1.2s}
 @media (prefers-reduced-motion:reduce){.flick,.bulbed::before,.bulbs::after,.gstar,.papel i,.lantern,.singer-sign .burst,.singer-sign .spark{animation:none}}
 
 </style>
@@ -372,6 +400,18 @@ body:has(#guest:not([hidden])){background:
           <div class="gs-panel"><span class="neon">GREAT <span class="flick">DRUNK</span>.</span></div>
           <div class="gs-strip">&#9733; KARAOKE &#9733;</div>
           <svg class="gstar" viewBox="0 0 100 100"><polygon points="50,0 58,36 96,22 66,48 100,64 60,62 64,100 48,68 22,96 36,58 0,50 36,42 14,8 46,34"/></svg>
+        </div>
+        <div class="carny" id="adBanner" hidden aria-live="polite">
+          <div class="carny-valance"></div>
+          <div class="carny-board bulbs">
+            <div class="carny-wheel" aria-hidden="true"></div>
+            <div class="carny-text">
+              <div class="carny-1">&#9733; Song Loading &#9733;</div>
+              <div class="carny-2">Ads Suck.</div>
+            </div>
+            <div class="carny-wheel" aria-hidden="true"></div>
+          </div>
+          <div class="carny-flags" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         </div>
         <div class="screen">
         <div id="player"></div>
@@ -765,12 +805,30 @@ body:has(#guest:not([hidden])){background:
     };
     const tag = document.createElement('script'); tag.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(tag);
 
+    // ----- carnival "Song Loading" banner, driven by the Karaoke Ad Skipper extension -----
+    let adBannerT;
+    function showAdBanner() {
+      $('#adBanner').hidden = false;
+      clearTimeout(adBannerT);
+      adBannerT = setTimeout(hideAdBanner, 120000); // failsafe if the "ad over" message never arrives
+    }
+    function hideAdBanner() { clearTimeout(adBannerT); $('#adBanner').hidden = true; }
+    window.addEventListener('message', (e) => {
+      if (!/^https:\/\/www\.youtube(-nocookie)?\.com$/.test(e.origin)) return;
+      const d = e.data;
+      if (!d || typeof d !== 'object' || d.source !== 'karaoke-ad-skipper') return;
+      if (d.state === 'start' && S.current) showAdBanner();
+      else if (d.state === 'end') hideAdBanner();
+    });
+
     function playItem(item) {
       if (!item) return;
+      hideAdBanner();
       S.current = item; save(); render(); overlay(null);
       if (ready) player.loadVideoById(item.videoId); else pending = item.videoId;
     }
     function advance() {
+      hideAdBanner();
       S.current = null; save(); render();
       if (!S.queue.length) return showIdle();
       if (S.autostart) playItem(S.queue.shift()); else showNext();
