@@ -566,7 +566,7 @@ body:has(#guest:not([hidden])){background:
   <dialog id="settings">
     <h2>Settings</h2>
     <div class="field">
-      <label class="label" for="apiKey">YouTube API key (built in, change only if needed)</label>
+      <label class="label" for="apiKey">YouTube API key (required for song search)</label>
       <input class="input" id="apiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
       <p class="help">Guests search YouTube on their phones with this key. Get a free one at <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">Google Cloud</a>: enable "YouTube Data API v3", then Credentials, Create API key. The free quota covers about 100 searches a day.</p>
     </div>
@@ -702,8 +702,8 @@ body:has(#guest:not([hidden])){background:
 (() => {
   'use strict';
   const RELAY = 'https://ntfy.sh/';
-  // YouTube Data API key, restricted to ruckusandreasoneli.github.io in Google Cloud
-  const BUILT_IN_KEY = 'AIzaSyA8N7vczQjUK1HZYcVD9Mq02RngfdwTcb0';
+  // No key in the code: the host pastes it in Settings on the projector computer (saved in that browser only)
+  const BUILT_IN_KEY = '';
   const $ = (s) => document.querySelector(s);
   const params = new URLSearchParams(location.search);
   const JOIN = params.get('join');
