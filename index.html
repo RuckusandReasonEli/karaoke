@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Bungee+Inline&family=Rye&family=Tilt+Neon&family=Monoton&family=Neonderthaw&family=Yellowtail&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=ZCOOL+QingKe+HuangYou&text=%E5%86%8D%E6%9D%A5%E4%B8%80%E6%9D%AF%E5%95%A4%E9%85%92%EF%BC%8C%E9%A6%96%E6%AD%8C%E3%80%82%E5%8D%A1%E6%8B%89%E4%B9%8B%E5%A4%9C%E5%94%B1%EF%BC%81OK&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.16.1/dist/mqtt.min.js"></script>
+<script src="reactions.js"></script>
 <style>
 :root{
   --bg:#0d0b14; --panel:#16131f; --panel-2:#1e1a2b; --line:#2c2640;
@@ -347,6 +349,55 @@ body:has(#guest:not([hidden])){background:
 .b1-studios span{padding-left:.55em}
 .b1-presents{margin-top:6px;font-family:'Neonderthaw',cursive;font-size:26px;line-height:1;color:#f2fff9;text-shadow:0 0 3px #fff,0 0 10px #7cff6b,0 0 22px #7cff6b}
 
+
+/* ---- phone: tabs, live queue, reactions ---- */
+#guest header{margin-bottom:14px}
+.g-lead{color:var(--muted);text-align:center;margin:0 0 14px}
+.g-tabs{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:6px;margin:0 0 14px;
+  background:rgba(16,8,18,.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:14px}
+.g-tabs button{padding:11px 4px;border-radius:10px;font-weight:700;color:var(--muted)}
+.g-tabs button b{font-weight:700;opacity:.85}
+.g-tabs button.on{background:var(--pink);color:#fff;box-shadow:0 0 16px rgba(255,45,149,.45)}
+.done-btns{display:grid;gap:10px;margin-bottom:14px}
+.q-now{border-color:#5a2a4a;box-shadow:0 0 22px rgba(255,45,149,.15)}
+.q-now-who{font-family:var(--display);font-size:26px;line-height:1.1;color:#fff;text-shadow:0 0 10px rgba(255,45,149,.6)}
+.q-now-what{color:var(--muted);margin-top:4px}
+.g-queue{list-style:none}
+.g-queue li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:10px 8px;border-radius:10px}
+.g-queue li + li{border-top:1px solid var(--line)}
+.g-queue li.me{background:rgba(255,45,149,.14);border-color:transparent;outline:1px solid rgba(255,45,149,.5)}
+.g-queue .qn{font-family:var(--display);color:var(--dim);text-align:center}
+.g-queue li:first-child .qn{color:var(--amber)}
+.g-queue .qs{font-weight:700}
+.g-queue .ql{font-size:13px;color:var(--muted)}
+.live-dot{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.live-dot i{width:8px;height:8px;border-radius:50%;background:#777}
+.live-dot.on i{background:var(--green);box-shadow:0 0 0 3px rgba(61,220,151,.2)}
+.r-head{display:grid;gap:10px}
+.r-now{font-family:var(--display);font-size:20px;text-align:center;color:#fff;text-shadow:0 0 10px rgba(46,230,255,.6)}
+.r-name{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);white-space:nowrap}
+.r-name .input{flex:1;min-width:0}
+.react-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.react-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px 10px;background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  transition:transform .1s,opacity .2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.react-btn svg{width:76px;height:76px;filter:drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff) drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff)}
+.react-btn span{font-weight:700;font-size:14px}
+.react-btn:active{transform:scale(.93)}
+.react-btn.cool{opacity:.55}
+.react-btn.pop svg{animation:rpop .45s ease}
+@keyframes rpop{40%{transform:scale(1.35) rotate(-10deg)}}
+.r-status{text-align:center;min-height:1.4em;margin-top:12px}
+
+/* ---- big screen: reactions float up over the stage ---- */
+#reactLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:12}
+.fr{position:absolute;bottom:60px;width:clamp(90px,7vw,140px);display:flex;flex-direction:column;align-items:center;
+  animation:floatUp var(--dur,4.8s) cubic-bezier(.22,.61,.36,1) forwards}
+.fr svg{width:100%;height:auto;filter:drop-shadow(2.5px 0 0 #fff) drop-shadow(-2.5px 0 0 #fff) drop-shadow(0 2.5px 0 #fff) drop-shadow(0 -2.5px 0 #fff) drop-shadow(0 10px 14px rgba(0,0,0,.6));
+  animation:wobble .9s ease-in-out infinite alternate}
+.fr .who{margin-top:4px;font:700 clamp(13px,1vw,17px) var(--body);color:#fff;background:rgba(20,8,24,.85);border:1px solid rgba(255,255,255,.25);padding:2px 12px;border-radius:999px;white-space:nowrap}
+@keyframes floatUp{0%{transform:translateY(30px) scale(.3);opacity:0}8%{transform:translateY(-8vh) scale(1.15);opacity:1}16%{transform:translateY(-14vh) scale(1)}
+  80%{opacity:1}100%{transform:translateY(-82vh) translateX(var(--drift,0px)) scale(.85);opacity:0}}
+@keyframes wobble{from{transform:rotate(-9deg)}to{transform:rotate(9deg)}}
 @media (prefers-reduced-motion:reduce){.flick,.bulbed::before,.bulbs::after,.gstar,.papel i,.lantern,.singer-sign .burst,.singer-sign .spark{animation:none}}
 
 </style>
@@ -473,6 +524,8 @@ body:has(#guest:not([hidden])){background:
       </div>
     </div>
 
+    <div id="reactLayer" aria-hidden="true"></div>
+
     <div class="nowbar">
       <div class="info">
         <div class="kicker">Now singing</div>
@@ -550,61 +603,94 @@ body:has(#guest:not([hidden])){background:
 
 <!-- ================= GUEST (PHONE) ================= -->
 <div id="guest" hidden>
-  <div id="gForm">
-    <header>
-      <div class="g-brand">Ruckus <span>&amp;</span> Reason Studios presents</div>
-      <div class="neon g-title">Sign up to sing!</div>
-      <p class="g-multi">&iexcl;Ap&uacute;ntate para cantar! &nbsp;&bull;&nbsp; <span lang="zh-Hans">来唱歌！</span></p>
-      <p>Pick your karaoke track, add your name, and you're on the list.</p>
-    </header>
+  <header>
+    <div class="g-brand">Ruckus <span>&amp;</span> Reason Studios presents</div>
+    <div class="neon g-title">Karaoke Night!</div>
+    <p class="g-multi">&iexcl;Noche de karaoke! &nbsp;&bull;&nbsp; <span lang="zh-Hans">卡拉OK之夜！</span></p>
+  </header>
 
+  <nav class="g-tabs" id="gTabs" role="tablist">
+    <button type="button" role="tab" data-tab="sign" class="on">Sign up</button>
+    <button type="button" role="tab" data-tab="queue">Queue <b id="gQCount"></b></button>
+    <button type="button" role="tab" data-tab="react">React</button>
+  </nav>
+
+  <section id="tabSign">
+    <div id="gForm">
+      <p class="g-lead">Pick your karaoke track, add your name, and you're on the list.</p>
     <div class="card" id="gStep1">
-      <label class="label" for="gQ">1. Search for your song</label>
-      <form id="gSearch" class="search-row" autocomplete="off">
-        <input class="input" id="gQ" placeholder="Song or artist" enterkeyhint="search">
-        <button class="btn primary" type="submit">Search</button>
-      </form>
-      <label class="toggle"><input type="checkbox" id="gKaraoke" checked> Karaoke versions only</label>
-      <p class="hint" id="gTapHint" hidden>Tap the one you want.</p>
-      <ul class="g-results" id="gResults"></ul>
-      <p class="err" id="gSearchErr" hidden></p>
-    </div>
+        <label class="label" for="gQ">1. Search for your song</label>
+        <form id="gSearch" class="search-row" autocomplete="off">
+          <input class="input" id="gQ" placeholder="Song or artist" enterkeyhint="search">
+          <button class="btn primary" type="submit">Search</button>
+        </form>
+        <label class="toggle"><input type="checkbox" id="gKaraoke" checked> Karaoke versions only</label>
+        <p class="hint" id="gTapHint" hidden>Tap the one you want.</p>
+        <ul class="g-results" id="gResults"></ul>
+        <p class="err" id="gSearchErr" hidden></p>
+      </div>
 
-    <div class="card" id="gNoKey" hidden>
-      <label class="label">Song search is off</label>
-      <p class="hint" style="margin:0">The host hasn't turned on song search yet. Let them know, then scan the QR code again.</p>
-    </div>
+      <div class="card" id="gNoKey" hidden>
+        <label class="label">Song search is off</label>
+        <p class="hint" style="margin:0">The host hasn't turned on song search yet. Let them know, then scan the QR code again.</p>
+      </div>
 
-    <form id="gFinish" autocomplete="off" hidden>
-      <div class="card">
-        <div class="pick-head">
-          <label class="label" style="margin:0">2. Your song</label>
-          <button type="button" class="link-btn" id="gChange">Change</button>
-        </div>
-        <div class="picked">
-          <img id="gPickedImg" alt="">
-          <div class="pick-fields">
-            <input class="input slim" id="gSong" placeholder="Song" maxlength="80" aria-label="Song">
-            <input class="input slim" id="gArtist" placeholder="Artist" maxlength="60" aria-label="Artist">
+      <form id="gFinish" autocomplete="off" hidden>
+        <div class="card">
+          <div class="pick-head">
+            <label class="label" style="margin:0">2. Your song</label>
+            <button type="button" class="link-btn" id="gChange">Change</button>
+          </div>
+          <div class="picked">
+            <img id="gPickedImg" alt="">
+            <div class="pick-fields">
+              <input class="input slim" id="gSong" placeholder="Song" maxlength="80" aria-label="Song">
+              <input class="input slim" id="gArtist" placeholder="Artist" maxlength="60" aria-label="Artist">
+            </div>
           </div>
         </div>
+
+        <div class="card">
+          <label class="label" for="gName">3. Your name</label>
+          <input class="input" id="gName" placeholder="Name on the list" maxlength="40" autocomplete="given-name" enterkeyhint="go">
+        </div>
+
+        <button class="btn primary big-btn" id="gSubmit" type="submit" disabled>Add me to the list</button>
+      </form>
+      <p class="err" id="gErr" hidden></p>
+    </div>
+
+    <div class="done" id="gDone" hidden>
+      <div class="neon g-title">You're on!</div>
+      <p id="gDoneMsg"></p>
+      <div class="done-btns">
+        <button class="btn big-btn" type="button" data-go="queue">See the queue</button>
+        <button class="btn primary big-btn" type="button" data-go="react">Send reactions</button>
       </div>
+      <button class="link-btn" id="gAgain" type="button">Sign up another song</button>
+    </div>
+  </section>
 
-      <div class="card">
-        <label class="label" for="gName">3. Your name</label>
-        <input class="input" id="gName" placeholder="Name on the list" maxlength="40" autocomplete="given-name" enterkeyhint="go">
-      </div>
+  <section id="tabQueue" hidden>
+    <div class="card q-now">
+      <label class="label">Now singing</label>
+      <div class="q-now-who" id="qNowWho">Nobody yet</div>
+      <div class="q-now-what" id="qNowWhat">Waiting for the first singer</div>
+    </div>
+    <div class="card">
+      <div class="pick-head"><label class="label" style="margin:0">Up next</label><span class="live-dot" id="qLive"><i></i><span>Connecting</span></span></div>
+      <ol class="g-queue" id="gQueue"></ol>
+    </div>
+  </section>
 
-      <button class="btn primary big-btn" id="gSubmit" type="submit" disabled>Add me to the list</button>
-    </form>
-    <p class="err" id="gErr" hidden></p>
-  </div>
-
-  <div class="done" id="gDone" hidden>
-    <div class="neon g-title">You're on!</div>
-    <p id="gDoneMsg"></p>
-    <button class="btn primary big-btn" id="gAgain">Sign up another song</button>
-  </div>
+  <section id="tabReact" hidden>
+    <div class="card r-head">
+      <div class="r-now" id="rNow">React to the singer!</div>
+      <label class="r-name">Showing as <input class="input slim" id="rName" placeholder="your name (optional)" maxlength="20" autocomplete="given-name"></label>
+    </div>
+    <div class="react-grid" id="reactGrid"></div>
+    <p class="hint r-status" id="rStatus"></p>
+  </section>
 
   <div class="done" id="gBad" hidden>
     <div class="logo">Hmm</div>
@@ -699,6 +785,13 @@ body:has(#guest:not([hidden])){background:
   const songLine = (it) => { const p = it.song ? it : splitTitle(it.title || 'YouTube video'); return p.artist ? p.song + ' by ' + p.artist : p.song; };
 
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  // ---------- live link for queue + reactions (MQTT over public brokers, two for backup) ----------
+  const MQTT_BROKERS = params.get('mqtt') ? [params.get('mqtt')] : ['wss://broker.hivemq.com:8884/mqtt', 'wss://broker.emqx.io:8084/mqtt'];
+  const MQTT_ROOT = 'rr-karaoke/';
+  const REACTIONS = (window.KQ_REACTIONS || []);
+  const REACT_BY_ID = Object.fromEntries(REACTIONS.map(r => [r.id, r]));
+  const mqttClient = (url) => window.mqtt ? window.mqtt.connect(url, { clientId: 'kq_' + Math.random().toString(16).slice(2, 12), clean: true, connectTimeout: 6000, reconnectPeriod: 4000, keepalive: 30 }) : null;
 
   if (JOIN !== null) guest(); else host();
 
@@ -800,6 +893,7 @@ body:has(#guest:not([hidden])){background:
       $('#nowWho').textContent = c ? c.singer : 'Nobody yet';
       $('#nowWhat').textContent = c ? songLine(c) : 'Scan the QR code to get on the list';
       const n = S.queue[0];
+      publishState();
       $('#upNextHint').innerHTML = '';
       if (n && c) { $('#upNextHint').append('Up next: '); $('#upNextHint').appendChild(el('b', null, n.singer)); }
     }
@@ -927,11 +1021,60 @@ body:has(#guest:not([hidden])){background:
     $('#newNight').onclick = () => {
       if (!confirm('Clear the list and make a new QR code? Old sign-up links will stop working.')) return;
       S.topic = newTopic(); S.queue = []; S.current = null; S.lastId = null; S.seen = [];
-      save(); stopVideo(); renderQR(); render(); showIdle(); connect(); dlg.close();
+      save(); stopVideo(); renderQR(); render(); showIdle(); connect(); liveConnect(); dlg.close();
     };
 
     let toastT;
     function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3200); }
+
+    // ----- live link: publish the queue to phones, float their reactions on screen -----
+    let liveClients = [], pubT = null;
+    const stateTopic = () => MQTT_ROOT + S.topic + '/state';
+    const reactTopic = () => MQTT_ROOT + S.topic + '/react';
+    function stateJson() {
+      const pick = (it) => it ? { singer: it.singer, line: songLine(it) } : null;
+      return JSON.stringify({ now: pick(S.current), queue: S.queue.slice(0, 40).map(pick), ts: Date.now() });
+    }
+    function publishState() {
+      clearTimeout(pubT);
+      pubT = setTimeout(() => {
+        const msg = stateJson();
+        liveClients.forEach(c => { if (c.connected) c.publish(stateTopic(), msg, { retain: true, qos: 1 }); });
+      }, 250);
+    }
+    function liveConnect() {
+      liveClients.forEach(c => { try { c.end(true); } catch (e) {} });
+      liveClients = MQTT_BROKERS.map(url => {
+        const c = mqttClient(url); if (!c) return null;
+        c.on('connect', () => { c.subscribe(reactTopic()); publishState(); });
+        c.on('message', (t, buf) => { if (t === reactTopic()) onReact(buf); });
+        c.on('error', () => {});
+        return c;
+      }).filter(Boolean);
+    }
+    setInterval(publishState, 60000);
+
+    let reactTimes = [];
+    function onReact(buf) {
+      let m; try { m = JSON.parse(String(buf)); } catch (e) { return; }
+      const r = REACT_BY_ID[m && m.e]; if (!r) return;
+      const now = Date.now(); reactTimes = reactTimes.filter(t => now - t < 1000);
+      if (reactTimes.length >= 12) return;           // cap the flood: 12 per second on screen
+      reactTimes.push(now);
+      showReaction(r, String(m.n || '').trim().slice(0, 20));
+    }
+    function showReaction(r, who) {
+      const layer = $('#reactLayer');
+      if (layer.childElementCount > 36) layer.firstElementChild.remove();
+      const f = el('div', 'fr');
+      f.innerHTML = r.svg;
+      if (who) f.appendChild(el('span', 'who', who));
+      f.style.left = (6 + Math.random() * 80).toFixed(1) + '%';
+      f.style.setProperty('--dur', (4.2 + Math.random() * 1.4).toFixed(2) + 's');
+      f.style.setProperty('--drift', ((Math.random() - 0.5) * 160).toFixed(0) + 'px');
+      f.addEventListener('animationend', (e) => { if (e.target === f) f.remove(); });
+      layer.appendChild(f);
+    }
 
     // ----- projection mode: hide controls after 3s of no mouse/keys -----
     let uiT;
@@ -985,6 +1128,7 @@ body:has(#guest:not([hidden])){background:
     if (S.current) { const c = S.current; S.current = null; S.queue.unshift(c); save(); render(); }
     S.queue.length ? showNext() : showIdle();
     connect();
+    liveConnect();
 
     window.__kq = { S, receive, parseVideoId, render }; // for testing
   }
@@ -994,7 +1138,74 @@ body:has(#guest:not([hidden])){background:
   // =====================================================================
   function guest() {
     $('#guest').hidden = false;
-    if (!/^[\w-]{1,64}$/.test(JOIN)) { $('#gForm').hidden = true; $('#gBad').hidden = false; return; }
+    if (!/^[\w-]{1,64}$/.test(JOIN)) { $('#gTabs').hidden = true; $('#tabSign').hidden = true; $('#gBad').hidden = false; return; }
+
+    // ----- tabs -----
+    function showTab(name) {
+      document.querySelectorAll('#gTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+      $('#tabSign').hidden = name !== 'sign'; $('#tabQueue').hidden = name !== 'queue'; $('#tabReact').hidden = name !== 'react';
+      window.scrollTo(0, 0);
+    }
+    document.querySelectorAll('#gTabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+    document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => showTab(b.dataset.go));
+
+    // ----- live link: queue + reactions -----
+    let live = null;
+    const stateTopic = MQTT_ROOT + JOIN + '/state', reactTopic = MQTT_ROOT + JOIN + '/react';
+    function setLiveDot(on, text) { const d = $('#qLive'); d.classList.toggle('on', on); d.querySelector('span').textContent = text; }
+    function liveTry(i) {
+      if (i >= MQTT_BROKERS.length) { setLiveDot(false, 'Offline'); return; }
+      const c = mqttClient(MQTT_BROKERS[i]);
+      if (!c) { setLiveDot(false, 'Offline'); return; }
+      let ok = false;
+      const giveUp = setTimeout(() => { if (!ok) { try { c.end(true); } catch (e) {} liveTry(i + 1); } }, 7000);
+      c.on('connect', () => { ok = true; clearTimeout(giveUp); live = c; setLiveDot(true, 'Live'); c.subscribe(stateTopic); });
+      c.on('reconnect', () => { if (ok) setLiveDot(false, 'Reconnecting'); });
+      c.on('message', (t, buf) => { if (t === stateTopic) renderQueue(buf); });
+      c.on('error', () => {});
+    }
+    function myName() { return ($('#rName').value || store.get('name', '') || '').trim(); }
+    function renderQueue(buf) {
+      let st; try { st = JSON.parse(String(buf)); } catch (e) { return; }
+      const me = myName().toLowerCase();
+      const now = st && st.now;
+      $('#qNowWho').textContent = now ? now.singer : 'Nobody yet';
+      $('#qNowWhat').textContent = now ? now.line : 'Waiting for the first singer';
+      $('#rNow').textContent = now ? 'React to ' + now.singer + '!' : 'React to the singer!';
+      const ol = $('#gQueue'); ol.innerHTML = '';
+      const q = Array.isArray(st && st.queue) ? st.queue.filter(Boolean) : [];
+      $('#gQCount').textContent = q.length ? '(' + q.length + ')' : '';
+      if (!q.length) ol.appendChild(el('li', 'note', 'Nobody in line. Sign up!'));
+      q.forEach((it, i) => {
+        const li = el('li'); if (me && String(it.singer).toLowerCase() === me) li.className = 'me';
+        li.appendChild(el('span', 'qn', String(i + 1)));
+        const d = el('div'); d.appendChild(el('div', 'qs', String(it.singer || ''))); d.appendChild(el('div', 'ql', String(it.line || ''))); li.appendChild(d);
+        ol.appendChild(li);
+      });
+    }
+    liveTry(0);
+
+    // ----- reaction buttons -----
+    $('#rName').value = store.get('name', '');
+    $('#rName').addEventListener('input', () => store.set('name', $('#rName').value));
+    let coolUntil = 0, statusT;
+    REACTIONS.forEach(r => {
+      const b = el('button', 'react-btn'); b.type = 'button'; b.setAttribute('aria-label', r.label);
+      b.innerHTML = r.svg; b.appendChild(el('span', null, r.label));
+      b.onclick = () => {
+        if (Date.now() < coolUntil) return;
+        if (!live || !live.connected) { $('#rStatus').textContent = 'Not connected to the screen yet. Try again in a moment.'; return; }
+        live.publish(reactTopic, JSON.stringify({ e: r.id, n: myName().slice(0, 20) }), { qos: 0 });
+        coolUntil = Date.now() + 900;
+        b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+        document.querySelectorAll('.react-btn').forEach(x => x.classList.add('cool'));
+        setTimeout(() => document.querySelectorAll('.react-btn').forEach(x => x.classList.remove('cool')), 900);
+        $('#rStatus').textContent = r.label + ' sent to the big screen!';
+        clearTimeout(statusT); statusT = setTimeout(() => { $('#rStatus').textContent = ''; }, 2000);
+      };
+      $('#reactGrid').appendChild(b);
+    });
+
     const key = params.get('k') || BUILT_IN_KEY;
     if (!key) { $('#gStep1').hidden = true; $('#gNoKey').hidden = false; return; }
     let pick = null;
@@ -1002,7 +1213,7 @@ body:has(#guest:not([hidden])){background:
     $('#gName').value = store.get('name', '');
     const update = () => { $('#gSubmit').disabled = !(pick && $('#gName').value.trim() && $('#gSong').value.trim()); };
     ['gName', 'gSong', 'gArtist'].forEach(id => $('#' + id).addEventListener('input', update));
-    $('#gName').addEventListener('input', () => store.set('name', $('#gName').value));
+    $('#gName').addEventListener('input', () => { store.set('name', $('#gName').value); $('#rName').value = $('#gName').value; });
 
     function choose(it) {
       const parts = splitTitle(it.title, $('#gQ').value);
